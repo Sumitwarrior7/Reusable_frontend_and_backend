@@ -1,23 +1,23 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from django.http import JsonResponse
 from django.core.exceptions import ObjectDoesNotExist
 from . import models
 from . import serializers
-from . import api
-
-
-
-@api_view(["POST"])
-def GetResponse(request):
-    data_dict = request.data
-    print(data_dict)
-    # res = api.openai_func(data_dict)
-    return Response(data_dict["name"])
-
 
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def GetNotes(request):
+    user = request.user
+    notes = user.note_set.all()
+    # notes = models.Note.objects.all()
+    serializer = serializers.NoteSerializer(notes, many=True)
+    return Response(serializer.data)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def GetNote(request, note_id):
     try:
         note = models.Note.objects.get(id=note_id)
@@ -28,10 +28,18 @@ def GetNote(request, note_id):
         serializer = serializers.NoteSerializer(note)
         return Response(serializer.data)
 
-
-
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def CreateNote(request):
+    data = request.data
+    print(data)
+    print("User :", request.user)
+    created_note = models.Note.objects.create(user=request.user, body=data["body"])
+    serializer = serializers.NoteSerializer(created_note, many=False)
+    return Response(serializer.data)
 
 @api_view(["PUT"])
+@permission_classes([IsAuthenticated])
 def UpdateNote(request, note_id):
     try:
         note = models.Note.objects.get(id=note_id)
@@ -50,8 +58,10 @@ def UpdateNote(request, note_id):
 
         return Response(serializer.data)
 
-
-
-
-
-
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def DeleteNote(request, note_id):
+    note = models.Note.objects.get(id=note_id)
+    print(note)
+    note.delete()
+    return Response("Note was deleted")
