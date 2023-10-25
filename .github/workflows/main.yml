@@ -1,0 +1,39 @@
+name: Enforce Issue Templates
+
+on:
+  issues:
+    types:
+      - opened
+
+jobs:
+  validate-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Issue Type
+        run: |
+          # Extract the issue type from the issue body
+          issue_type=$(echo "${{ github.event.issue.body }}" | grep -oE 'Issue Type: (.*)' | sed 's/Issue Type: //')
+
+          # Define the expected issue types
+          expected_types=("bug" "feature" "improvement")
+
+          # Check if the issue type is valid
+          if [[ " ${expected_types[*]} " == *" $issue_type "* ]]; then
+            echo "Issue type is valid: $issue_type"
+            exit 0
+          else
+            echo "Invalid issue type: $issue_type"
+            echo "Please select one of the following issue types: bug, feature, improvement"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Comment on Invalid Issue
+        if: failure()
+        run: |
+          # Comment on the issue if the issue type is invalid
+          body="Invalid issue type. Please select one of the following issue types: bug, feature, improvement"
+          gh issue comment ${{ github.event.issue.number }} --body "$body"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
